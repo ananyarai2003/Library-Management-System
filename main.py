@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO))
@@ -142,7 +142,8 @@ def _sync_book_availability_from_loans(conn: sqlite3.Connection, book_id: int) -
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
-    raise exc
+    # Return a generic 500 response instead of re-raising, which would bypass this handler.
+    raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @app.get("/health")
@@ -224,8 +225,8 @@ def delete_book(book_id: int):
     with get_db() as conn:
         cur = conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
     if cur.rowcount == 0:
-        raise HTTPException(404, "Book not found")
         logger.info("Book delete failed id=%s not found", book_id)
+        raise HTTPException(404, "Book not found")
     logger.info("Book deleted id=%s", book_id)
     return {"ok": True}
 
