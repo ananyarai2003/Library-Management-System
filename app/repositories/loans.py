@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from app import config
 from app.db import read_connection, transaction
 from app.errors import ConflictError, NotFoundError
+from app.pagination import Page
 
 
 def _now() -> datetime:
@@ -15,12 +16,20 @@ def _to_dict(row: sqlite3.Row) -> dict:
     return dict(row) | {"overdue": overdue}
 
 
-def list_loans(active: bool) -> list[dict]:
-    sql = "SELECT * FROM loans"
+def list_loans(active: bool, member_id: int | None, book_id: int | None, page: Page) -> list[dict]:
+    clauses, params = [], []
     if active:
-        sql += " WHERE returned_at IS NULL"
+        clauses.append("returned_at IS NULL")
+    if member_id is not None:
+        clauses.append("member_id = ?")
+        params.append(member_id)
+    if book_id is not None:
+        clauses.append("book_id = ?")
+        params.append(book_id)
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+    sql = f"SELECT * FROM loans{where} ORDER BY id DESC LIMIT ? OFFSET ?"
     with read_connection() as conn:
-        return [_to_dict(r) for r in conn.execute(sql + " ORDER BY id DESC")]
+        return [_to_dict(r) for r in conn.execute(sql, (*params, page.limit, page.offset))]
 
 
 def borrow(book_id: int, member_id: int) -> dict:

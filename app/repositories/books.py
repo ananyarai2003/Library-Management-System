@@ -2,6 +2,7 @@ import sqlite3
 
 from app.db import read_connection, transaction
 from app.errors import ConflictError, NotFoundError
+from app.pagination import Page
 from app.schemas import BookIn
 
 
@@ -9,14 +10,18 @@ def _to_dict(row: sqlite3.Row) -> dict:
     return dict(row) | {"available": row["available_copies"] > 0}
 
 
-def list_books(q: str | None) -> list[dict]:
-    sql, params = "SELECT * FROM books", ()
+def list_books(q: str | None, available: bool | None, page: Page) -> list[dict]:
+    clauses, params = [], []
     if q:
         like = f"%{q}%"
-        sql += " WHERE title LIKE ? OR author LIKE ? OR isbn LIKE ?"
-        params = (like, like, like)
+        clauses.append("(title LIKE ? OR author LIKE ? OR isbn LIKE ?)")
+        params += [like, like, like]
+    if available is not None:
+        clauses.append("available_copies > 0" if available else "available_copies = 0")
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+    sql = f"SELECT * FROM books{where} ORDER BY id DESC LIMIT ? OFFSET ?"
     with read_connection() as conn:
-        return [_to_dict(r) for r in conn.execute(sql + " ORDER BY id DESC", params)]
+        return [_to_dict(r) for r in conn.execute(sql, (*params, page.limit, page.offset))]
 
 
 def create(book: BookIn) -> dict:
@@ -40,3 +45,18 @@ def delete(book_id: int) -> None:
                 raise NotFoundError("Book not found")
     except sqlite3.IntegrityError:
         raise ConflictError("Book has loan records and cannot be deleted")
+
+
+def set_availability(book_id: int, available_copies: int) -> dict:
+    with transaction() as conn:
+        # Admin override (e.g. lost or damaged copies); bounded by total_copies in one statement.
+        cur = conn.execute(
+            "UPDATE books SET available_copies = ? WHERE id = ? AND ? <= total_copies",
+            (available_copies, book_id, available_copies),
+        )
+        if cur.rowcount == 0:
+            if not conn.execute("SELECT 1 FROM books WHERE id = ?", (book_id,)).fetchone():
+                raise NotFoundError("Book not found")
+            raise ConflictError("available_copies cannot exceed total_copies")
+        row = conn.execute("SELECT * FROM books WHERE id = ?", (book_id,)).fetchone()
+    return _to_dict(row)

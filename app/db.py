@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_loans_active ON loans(returned_at);
 
 def _connect() -> sqlite3.Connection:
     # isolation_level=None: we issue BEGIN/COMMIT ourselves.
-    conn = sqlite3.connect(config.db_path(), isolation_level=None)
+    conn = sqlite3.connect(config.db_path(), isolation_level=None, timeout=config.db_timeout_seconds())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -80,6 +80,8 @@ def _upgrade_legacy_books(conn: sqlite3.Connection) -> None:
 def init_db() -> None:
     conn = _connect()
     try:
+        conn.execute("PRAGMA journal_mode = WAL")  # persistent; readers do not block the writer
+        conn.execute("PRAGMA synchronous = NORMAL")
         _upgrade_legacy_books(conn)
         conn.executescript(SCHEMA)
     finally:

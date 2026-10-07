@@ -51,3 +51,7 @@ class MemberIn(BaseModel):
 class LoanIn(BaseModel):
     book_id: int = Field(ge=1)
     member_id: int = Field(ge=1)
+
+
+class AvailabilityIn(BaseModel):
+    available_copies: int = Field(ge=0, le=1000)
