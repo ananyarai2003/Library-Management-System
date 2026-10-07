@@ -34,7 +34,7 @@ def create(book: BookIn) -> dict:
             )
             row = conn.execute("SELECT * FROM books WHERE id = ?", (cur.lastrowid,)).fetchone()
     except sqlite3.IntegrityError:
-        raise ConflictError("A book with this ISBN already exists")
+        raise ConflictError("A book with this ISBN already exists") from None
     return _to_dict(row)
 
 
@@ -45,7 +45,7 @@ def delete(book_id: int) -> None:
             if cur.rowcount == 0:
                 raise NotFoundError("Book not found")
     except sqlite3.IntegrityError:
-        raise ConflictError("Book has loan records and cannot be deleted")
+        raise ConflictError("Book has loan records and cannot be deleted") from None
 
 
 def set_availability(book_id: int, available_copies: int) -> dict:

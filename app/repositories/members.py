@@ -18,5 +18,5 @@ def create(member: MemberIn) -> dict:
             cur = conn.execute("INSERT INTO members (name, email) VALUES (?, ?)", (member.name, member.email))
             row = conn.execute("SELECT * FROM members WHERE id = ?", (cur.lastrowid,)).fetchone()
     except sqlite3.IntegrityError:
-        raise ConflictError("A member with this email already exists")
+        raise ConflictError("A member with this email already exists") from None
     return dict(row)
