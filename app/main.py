@@ -11,6 +11,11 @@ from app.logging_config import configure_logging, logger, register_request_loggi
 from app.routers import books, health, loans, members
 
 
+def _validate_config() -> None:
+    config.loan_days()
+    config.db_timeout_seconds()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
@@ -20,6 +25,7 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     configure_logging()
+    _validate_config()  # fail fast on bad environment values
     app = FastAPI(title="Library Management System", lifespan=lifespan)
     origins = config.cors_origins()
     if origins:  # same-origin only unless explicitly configured

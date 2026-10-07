@@ -174,3 +174,41 @@ def test_search_treats_wildcards_literally(client):
     assert len(client.get("/api/books", params={"q": "%"}).json()) == 1
     assert len(client.get("/api/books", params={"q": "_"}).json()) == 0
     assert len(client.get("/api/books", params={"q": "100%"}).json()) == 1
+
+
+HUGE = 10**30
+
+
+def test_out_of_range_integers_are_rejected_not_500(client):
+    book, member = make(client)
+    assert client.get("/api/loans", params={"book_id": HUGE}).status_code == 422
+    assert client.get("/api/books", params={"offset": HUGE}).status_code == 422
+    assert client.post(f"/api/loans/{HUGE}/return").status_code == 422
+    assert client.patch(f"/api/books/{HUGE}/availability", json={"available_copies": 1}).status_code == 422
+    assert client.post("/api/loans", json={"book_id": HUGE, "member_id": member["id"]}).status_code == 422
+
+
+def test_locked_database_returns_503(client, monkeypatch):
+    from app.db import _connect
+
+    monkeypatch.setenv("LMS_DB_TIMEOUT", "0.2")
+    holder = _connect()
+    holder.execute("BEGIN IMMEDIATE")
+    try:
+        r = client.post("/api/members", json=MEMBER)
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    assert r.status_code == 503 and r.headers["Retry-After"] == "1"
+    assert r.json()["error"]["message"]
+    assert client.post("/api/members", json=MEMBER).status_code == 201
+
+
+@pytest.mark.parametrize("name", ["LMS_LOAN_DAYS", "LMS_DB_TIMEOUT"])
+def test_invalid_numeric_config_fails_at_startup(tmp_path, monkeypatch, name):
+    from app.main import create_app
+
+    monkeypatch.setenv("LMS_DB_PATH", str(tmp_path / "bad.db"))
+    monkeypatch.setenv(name, "abc")
+    with pytest.raises(ValueError):
+        create_app()

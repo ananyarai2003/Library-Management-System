@@ -1,9 +1,13 @@
 """Domain errors and handlers that emit {"error": {"message", "details"}}."""
+import sqlite3
+
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.logging_config import logger
 
 
 class AppError(Exception):
@@ -26,9 +30,9 @@ class UnauthorizedError(AppError):
     status_code = 401
 
 
-def _response(status: int, message: str, details=None) -> JSONResponse:
+def _response(status: int, message: str, details=None, headers: dict | None = None) -> JSONResponse:
     body = {"error": {"message": message, "details": details or []}}
-    return JSONResponse(status_code=status, content=body)
+    return JSONResponse(status_code=status, content=body, headers=headers)
 
 
 def register_error_handlers(app: FastAPI) -> None:
@@ -44,3 +48,15 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(_: Request, exc: StarletteHTTPException):
         return _response(exc.status_code, str(exc.detail))
+
+    @app.exception_handler(OverflowError)
+    async def _overflow_error(_: Request, exc: OverflowError):
+        # SQLite integers are 64-bit; larger ids/offsets cannot be bound as parameters.
+        return _response(422, "Numeric value out of range")
+
+    @app.exception_handler(sqlite3.OperationalError)
+    async def _db_error(_: Request, exc: sqlite3.OperationalError):
+        if "locked" in str(exc) or "busy" in str(exc):
+            return _response(503, "Database is busy, retry shortly", headers={"Retry-After": "1"})
+        logger.error("database error", exc_info=exc)
+        return _response(500, "Internal Server Error")
