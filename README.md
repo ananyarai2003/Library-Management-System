@@ -1,6 +1,6 @@
 # Library Management System — backend
 
-FastAPI + SQLite service. Serves the JSON API under `/api` and, when a sibling `../frontend` directory exists, the static UI at `/`.
+FastAPI + SQLite service. Serves the JSON API under `/api` and, the static UI from `frontend/` at `/`.
 
 ## Run
 
@@ -47,3 +47,8 @@ Errors share one shape: `{"error": {"message": "...", "details": [...]}}`.
 - **"database is locked" / 5xx under load:** raise `LMS_DB_TIMEOUT`; writes are serialised (`BEGIN IMMEDIATE`).
 - **Auth:** single shared API key, compared in constant time. Rotate by changing `LMS_API_KEY` and restarting. Reads are public.
 - **CI:** `.github/workflows/ci.yml` runs `ruff check` and `pytest` on every push and PR.
+
+## Layout and end-to-end tests
+
+- `app/` — API, `tests/` — in-process pytest suite, `frontend/` — static HTML/CSS/JS served at `/`.
+- `e2e/` — Playwright (Python) API and UI tests that start real uvicorn servers on temporary databases. Needs `playwright` and its Chromium browser installed (`py -m playwright install chromium`); not run in CI. Run with `cd e2e && py -m pytest -q` (about 4 minutes).

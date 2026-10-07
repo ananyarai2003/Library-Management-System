@@ -1,4 +1,4 @@
-exclude = ["main.py"]  # legacy single-file version, superseded by app/
+exclude = ["main.py", "e2e"]  # legacy single-file version; e2e has its own tooling
 line-length = 120
 target-version = "py311"
 
