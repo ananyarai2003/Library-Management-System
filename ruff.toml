@@ -1,0 +1,9 @@
+exclude = ["main.py", "e2e"]  # legacy single-file version; e2e has its own tooling
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "B"]
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header"]

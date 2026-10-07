@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library Management System</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Library Management System</h1>
+    <label class="key">API key
+      <input id="api-key" type="password" placeholder="X-API-Key for write actions" autocomplete="off" />
+    </label>
+  </header>
+
+  <div id="error" class="error" role="alert" hidden></div>
+
+  <main>
+    <section class="card">
+      <h2>Add a book</h2>
+      <form id="book-form">
+        <input id="title" placeholder="Title" required maxlength="200" />
+        <input id="author" placeholder="Author" required maxlength="200" />
+        <input id="isbn" placeholder="ISBN (optional)" minlength="10" maxlength="17" />
+        <input id="copies" type="number" min="1" max="1000" value="1" aria-label="Copies" />
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Books</h2>
+      <form id="search-form">
+        <input id="search" type="search" placeholder="Search title, author or ISBN" maxlength="100" />
+        <button type="submit" class="secondary">Search</button>
+      </form>
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Author</th><th>ISBN</th><th>Copies</th><th></th></tr>
+        </thead>
+        <tbody id="book-list"></tbody>
+      </table>
+      <p id="books-empty" hidden>No books found.</p>
+    </section>
+
+    <section class="card">
+      <h2>Members</h2>
+      <form id="member-form">
+        <input id="member-name" placeholder="Name" required maxlength="100" />
+        <input id="member-email" type="email" placeholder="Email" required maxlength="254" />
+        <button type="submit">Add</button>
+      </form>
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th></tr></thead>
+        <tbody id="member-list"></tbody>
+      </table>
+      <p id="members-empty" hidden>No members yet.</p>
+    </section>
+
+    <section class="card">
+      <h2>Borrow a book</h2>
+      <form id="loan-form">
+        <select id="loan-book" required aria-label="Book"></select>
+        <select id="loan-member" required aria-label="Member"></select>
+        <button type="submit">Borrow</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Active loans</h2>
+      <table>
+        <thead><tr><th>Book</th><th>Member</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <tbody id="loan-list"></tbody>
+      </table>
+      <p id="loans-empty" hidden>No active loans.</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
