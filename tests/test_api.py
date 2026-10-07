@@ -157,3 +157,20 @@ def test_cors_allows_only_configured_origin(tmp_path, monkeypatch):
         assert ok.headers["access-control-allow-origin"] == "https://lib.example"
         other = c.get("/api/health", headers={"Origin": "https://evil.example"})
         assert "access-control-allow-origin" not in other.headers
+
+
+def test_return_after_availability_override_does_not_exceed_total(client):
+    book, member = make(client)
+    loan = client.post("/api/loans", json={"book_id": book["id"], "member_id": member["id"]}).json()
+    client.patch(f"/api/books/{book['id']}/availability", json={"available_copies": 1})
+    r = client.post(f"/api/loans/{loan['id']}/return")
+    assert r.status_code == 200
+    assert client.get("/api/books").json()[0]["available_copies"] == 1
+
+
+def test_search_treats_wildcards_literally(client):
+    client.post("/api/books", json={"title": "100% Pure", "author": "A", "isbn": None})
+    client.post("/api/books", json={"title": "Plain", "author": "B", "isbn": None})
+    assert len(client.get("/api/books", params={"q": "%"}).json()) == 1
+    assert len(client.get("/api/books", params={"q": "_"}).json()) == 0
+    assert len(client.get("/api/books", params={"q": "100%"}).json()) == 1

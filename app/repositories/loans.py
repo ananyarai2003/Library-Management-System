@@ -65,6 +65,10 @@ def return_loan(loan_id: int) -> dict:
         )
         if cur.rowcount == 0:
             raise ConflictError("Loan already returned")
-        conn.execute("UPDATE books SET available_copies = available_copies + 1 WHERE id = ?", (loan["book_id"],))
+        # MIN: an availability override may already have restored this copy.
+        conn.execute(
+            "UPDATE books SET available_copies = MIN(available_copies + 1, total_copies) WHERE id = ?",
+            (loan["book_id"],),
+        )
         row = conn.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
     return _to_dict(row)

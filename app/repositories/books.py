@@ -13,8 +13,9 @@ def _to_dict(row: sqlite3.Row) -> dict:
 def list_books(q: str | None, available: bool | None, page: Page) -> list[dict]:
     clauses, params = [], []
     if q:
-        like = f"%{q}%"
-        clauses.append("(title LIKE ? OR author LIKE ? OR isbn LIKE ?)")
+        escaped = q.replace("!", "!!").replace("%", "!%").replace("_", "!_")  # match literally, not as wildcards
+        like = f"%{escaped}%"
+        clauses.append("(title LIKE ? ESCAPE '!' OR author LIKE ? ESCAPE '!' OR isbn LIKE ? ESCAPE '!')")
         params += [like, like, like]
     if available is not None:
         clauses.append("available_copies > 0" if available else "available_copies = 0")
